@@ -13,21 +13,22 @@ that were consumed at some rate into other products before realizing actual sale
 
 Strategy & Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- When calculating the profitability for upstream production, we must look to downstream sales and consumption
-to determine what share of the produced volume was sold directly vs consumed internally. We must then look at each
-finished good product that utilized each given intermediate and use sales history and BOM data to calculate what
-portion of that final profit can be attributed to the upstream intermediate.
+- When calculating profitability for upstream production, we must look to downstream sales and consumption records
+to subdivide the produced volume into portions that were sold directly vs consumed internally. For the portion consumed
+internally, we then need to subdivide further to analyze which downstream products consumed the target product, using
+data from BOMs and sales to assign the appropriate portion of the final finished good profit back upstream to the target
+intermediate.
 
 - Addressing this problem requires multiple nested tables to be calculated on the fly as we construct the final
-output. Here, we use multiple GENERATE ROW patterns for this purpose. Each nested table is iterated to calculate some
-number needed at the next level up. Compared to ADDCOLUMNS, GENERATE ROW is a convenient and powerful choice when
-needing to define multiple internal variables before defining the final column to be added. The 3 layers can be
-summarized as follows:
+output. Here, we use multiple GENERATE ROW patterns. Each nested table is iterated to calculate some number needed at
+the next level up. Compared to ADDCOLUMNS, GENERATE ROW is a convenient and more powerful choice when needing to define
+multiple internal variables ahead of the desired output. The 3 layers can be summarized as follows:
 
     1) Generate a table of assets and their total volumes, hours etc
-    2) For each asset, generate a nested table of all products produced directly by that asset
-    3) For each product produced, generate a second nested table summarizing sales and internal consumption of that
-    product, including percent of formula in downstream products using BOMs
+    2) For each asset, generate a nested table of all products produced directly by that asset and their respective
+    ratio of sales vs internal consumption
+    3) For each product with some internally consumed portion, generate a second nested table summarizing the products
+    which consumed the target, including percent of formula and profit of the final finished goods
 
 - Despite the length and complexity, this query has been optimized to execute in ~350ms while requiring multiple
 iterations of large tables. The relevant fact tables range from 4-8 million rows in size.
