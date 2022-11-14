@@ -1,0 +1,73 @@
+Problem Statement:
+
+Measure:
+VAR StartPoint =
+    CROSSJOIN(
+        CALCULATETABLE(
+            VALUES( 'Calendar'[YearWeek] ),
+            'Calendar'[Schedule Dates] = TRUE
+        ),
+        CALCULATETABLE(
+            DISTINCT(
+                SELECTCOLUMNS(
+                    'Resource Master',
+                    "Plant", 'Resource Master'[Plant],
+                    "Resource", 'Resource Master'[Resource]
+                )
+            ),
+            TREATAS(
+                FILTER(
+                    DISTINCT(
+                        UNION(
+                            SUMMARIZE(
+                                'CM50',
+                                'CM50'[Plant],
+                                'CM50'[Resource]
+                            ),
+                            SUMMARIZE(
+                                'Merged Production',
+                                'Merged Production'[Plant],
+                                'Merged Production'[Resource]
+                            )
+                        )
+                    ),
+                    NOT 'CM50'[Resource] = BLANK()
+                        && NOT 'CM50'[Plant] = BLANK()
+                ),
+                'Resource Master'[Plant],
+                'Resource Master'[Resource]
+            )
+        )
+    )
+VAR CalcTable =
+    GENERATE(
+        StartPoint,
+        VAR Plan =
+            CALCULATE(
+                SUMX(
+                    'CM50',
+                    VAR ScheduleStart = 'CM50'[Schedule Date]
+                    VAR ScheduleEnd = ScheduleStart + 6
+                    RETURN
+                        IF(
+                            AND( 'CM50'[End Date] >= ScheduleStart, 'CM50'[End Date] <= ScheduleEnd ),
+                            IF(
+                                'CM50'[UoM] = "LB",
+                                'CM50'[Quantity],
+                                'CM50'[Quantity] * RELATED( 'Material Master'[Packaged Weight] )
+                            )
+                        )
+                ),
+                'Resource Master'[Planned] = TRUE
+            )
+        VAR ActualQuantity =
+            CALCULATE(
+                SUMX( 'Merged Production', 'Merged Production'[Actual Pounds] ),
+                'Resource Master'[Planned] = TRUE
+            )
+        VAR PSA = DIVIDE( ActualQuantity, Plan )
+        VAR Delta = ABS( ActualQuantity - Plan )
+        RETURN ROW( "Plan", Plan, "Actual", ActualQuantity, "Error", Delta )
+    )
+VAR AbsoluteVariance = SUMX( CalcTable, [Error] )
+RETURN AbsoluteVariance
