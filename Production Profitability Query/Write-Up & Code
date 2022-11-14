@@ -19,11 +19,15 @@ finished good product that utilized each given intermediate and use sales histor
 portion of that final profit can be attributed to the upstream intermediate.
 
 - Addressing this problem requires multiple nested tables to be calculated on the fly as we construct the final
-output. I am using multiple GENERATE ROW patterns for this purpose. Each nested table is iterated to calculate some
-number needed at the next level up. The 3 layers can be summarized as follows:
-    1) Generate a table of assets
-    2) For each asset, generate a table of all products produced by that asset
-    3) For each product produced, generate a table summarizing sales and consumption of that product
+output. Here, we use multiple GENERATE ROW patterns for this purpose. Each nested table is iterated to calculate some
+number needed at the next level up. Compared to ADDCOLUMNS, GENERATE ROW is a convenient and powerful choice when
+needing to define multiple internal variables before defining the final column to be added. The 3 layers can be
+summarized as follows:
+
+    1) Generate a table of assets and their total volumes, hours etc
+    2) For each asset, generate a nested table of all products produced directly by that asset
+    3) For each product produced, generate a second nested table summarizing sales and internal consumption of that
+    product, including percent of formula in downstream products using BOMs
 
 - Despite the length and complexity, this query has been optimized to execute in ~350ms while requiring multiple
 iterations of large tables. The relevant fact tables range from 4-8 million rows in size.
